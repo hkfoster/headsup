@@ -1,11 +1,77 @@
-/*
-* HeadsUp 1.5.6
-* @author Kyle Foster (@hkfoster)
-* @license MIT
-*/
-;(function( window, document, undefined ) {
+/**
+ * HeadsUp 1.5.7
+ * A smart header for smart people
+ * @author Kyle Foster (@hkfoster)
+ * @license MIT
+ */
+;( function( root, factory ) {
+  if ( typeof define === 'function' && define.amd ) {
+    define( factory );
+  } else if ( typeof exports === 'object' ) {
+    module.exports = factory;
+  } else {
+    root.headsUp = factory( root );
+  }
+})( this, function( root ) {
 
   'use strict';
+
+  // Public API object
+  var headsUp = {};
+
+  // Overridable defaults
+  headsUp.defaults = {
+    delay       : 300,
+    sensitivity : 20
+  };
+
+  // Init function
+  headsUp.init = function( element, settings ) {
+
+    // Scoped variables
+    var options    = extend( this.defaults, settings ),
+        selector   = document.querySelector( element ),
+        docHeight  = document.body.scrollHeight,
+        winHeight  = window.innerHeight,
+        calcDelay  = ( options.delay.toString().indexOf( '%' ) != -1 ) ? parseFloat( options.delay ) / 100.0 * docHeight - winHeight : options.delay,
+        oldScrollY = 0;
+
+    // Resize handler function
+    function resizeHandler() {
+      winHeight = window.innerHeight;
+    }
+
+    // Scroll handler function
+    function scrollHandler() {
+
+      // Scoped variables
+      var newScrollY = window.pageYOffset,
+          pastDelay  = newScrollY > calcDelay,
+          goingDown  = newScrollY > oldScrollY,
+          fastEnough = newScrollY < oldScrollY - options.sensitivity,
+          rockBottom = newScrollY < 0 || newScrollY + winHeight >= docHeight;
+
+      // Where the magic happens
+      if ( pastDelay && goingDown ) {
+        selector.classList.add( 'heads-up' );
+      } else if ( !goingDown && fastEnough && !rockBottom || !pastDelay ) {
+        selector.classList.remove( 'heads-up' );
+      }
+
+      // Keep on keeping on
+      oldScrollY = newScrollY;
+    }
+
+    // Attach listeners
+    if ( selector ) {
+
+      // Resize function listener
+      window.addEventListener( 'resize', throttle( resizeHandler ), false );
+
+      // Scroll function listener
+      window.addEventListener( 'scroll', throttle( scrollHandler ), false );
+    }
+  };
 
   // Extend function
   function extend( a, b ) {
@@ -17,115 +83,28 @@
     return a;
   }
 
-  // Throttle function (http://bit.ly/1eJxOqL)
-  function throttle( fn, threshhold, scope ) {
-    threshhold || ( threshhold = 250 );
-    var previous, deferTimer;
-    return function () {
-      var context = scope || this,
-          current = Date.now(),
-          args    = arguments;
-      if ( previous && current < previous + threshhold ) {
-        clearTimeout( deferTimer );
-        deferTimer = setTimeout( function () {
-        previous   = current;
-        fn.apply( context, args );
-        }, threshhold );
-      } else {
-        previous = current;
-        fn.apply( context, args );
-      }
+  // Throttle function with requestAnimationFrame
+  function throttle( callback ) {
+    var wait, args, context;
+    return function() {
+      if ( wait ) { return; }
+      wait = true;
+      args = arguments;
+      context = this;
+      requestAnimationFrame( function() {
+        wait = false;
+        callback.apply( context, args );
+      });
     };
   }
 
-  // Class management functions
-  function classReg( className ) {
-    return new RegExp( '(^|\\s+)' + className + '(\\s+|$)' );
-  }
+  // Public API
+  return headsUp;
 
-  function hasClass( el, cl ) {
-    return classReg( cl ).test( el.className );
-  }
-
-  function addClass( el, cl ) {
-    if ( !hasClass( el, cl ) ) {
-      el.className = el.className + ' ' + cl;
-    }
-  }
-
-  function removeClass( el, cl ) {
-    el.className = el.className.replace( classReg( cl ), ' ' );
-  }
-
-  // Main function definition
-  function headsUp( selector, options ) {
-    this.selector = document.querySelector( selector );
-    this.options  = extend( this.defaults, options );
-    this.init();
-  }
-
-  // Overridable defaults
-  headsUp.prototype = {
-    defaults : {
-      delay       : 300,
-      sensitivity : 20
-    },
-
-    // Init function
-    init : function( selector ) {
-
-      var self         = this,
-          options      = self.options,
-          selector     = self.selector,
-          oldScrollY   = 0,
-          winHeight;
-
-      // Resize handler function
-      function resizeHandler() {
-        winHeight = window.innerHeight;
-        return winHeight;
-      }
-
-      // Scroll handler function
-      function scrollHandler() {
-
-        // Scoped variables
-        var newScrollY = window.pageYOffset,
-            docHeight  = document.body.scrollHeight,
-            pastDelay  = newScrollY > options.delay,
-            goingDown  = newScrollY > oldScrollY,
-            fastEnough = newScrollY < oldScrollY - options.sensitivity,
-            rockBottom = newScrollY < 0 || newScrollY + winHeight >= docHeight;
-
-        // Where the magic happens
-        if ( pastDelay && goingDown ) {
-          addClass( selector, 'heads-up' );
-        } else if ( !goingDown && fastEnough && !rockBottom || !pastDelay ) {
-          removeClass( selector, 'heads-up' );
-        }
-
-        // Keep on keeping on
-        oldScrollY = newScrollY;
-      }
-
-      // Attach listeners
-      if ( selector ) {
-
-        // Trigger initial resize
-        resizeHandler();
-
-        // Resize function listener
-        window.addEventListener( 'resize', throttle( resizeHandler ), false );
-
-        // Scroll function listener
-        window.addEventListener( 'scroll', throttle( scrollHandler, 100 ), false );
-      }
-    }
-  };
-
-  window.headsUp = headsUp;
-
-})( window, document );
+});
 
 // Instantiate HeadsUp
-// new headsUp( 'YOUR SELECTOR HERE' );
+// headsUp.init( 'selector', {
+//   delay : '75%',
+//   sensitivity: 30
+// });
