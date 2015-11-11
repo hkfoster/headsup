@@ -1,5 +1,5 @@
 /**
- * HeadsUp 1.5.7
+ * HeadsUp 1.5.8
  * A smart header for smart people
  * @author Kyle Foster (@hkfoster)
  * @license MIT
@@ -37,12 +37,15 @@
         oldScrollY = 0;
 
     // Resize handler function
-    function resizeHandler() {
+    var resizeHandler = throttle( function() {
+
+      // Update window height variable
       winHeight = window.innerHeight;
-    }
+
+    }, 250 );
 
     // Scroll handler function
-    function scrollHandler() {
+    var scrollHandler = throttle( function() {
 
       // Scoped variables
       var newScrollY = window.pageYOffset,
@@ -60,16 +63,18 @@
 
       // Keep on keeping on
       oldScrollY = newScrollY;
-    }
+
+    }, 100 );
 
     // Attach listeners
     if ( selector ) {
 
       // Resize function listener
-      window.addEventListener( 'resize', throttle( resizeHandler ), false );
+      window.addEventListener( 'resize', resizeHandler, false );
 
       // Scroll function listener
-      window.addEventListener( 'scroll', throttle( scrollHandler ), false );
+      window.addEventListener( 'scroll', scrollHandler, false );
+
     }
   };
 
@@ -83,18 +88,24 @@
     return a;
   }
 
-  // Throttle function with requestAnimationFrame
-  function throttle( callback ) {
-    var wait, args, context;
-    return function() {
-      if ( wait ) { return; }
-      wait = true;
-      args = arguments;
-      context = this;
-      requestAnimationFrame( function() {
-        wait = false;
-        callback.apply( context, args );
-      });
+  // Throttle function (http://bit.ly/1eJxOqL)
+  function throttle( fn, threshhold, scope ) {
+    var threshold = threshhold || 250,
+        previous, deferTimer;
+    return function () {
+      var context = scope || this,
+          current = Date.now(),
+          args    = arguments;
+      if ( previous && current < previous + threshhold ) {
+        clearTimeout( deferTimer );
+        deferTimer = setTimeout( function () {
+        previous   = current;
+        fn.apply( context, args );
+        }, threshhold );
+      } else {
+        previous = current;
+        fn.apply( context, args );
+      }
     };
   }
 
@@ -103,8 +114,9 @@
 
 });
 
-// Instantiate HeadsUp
-// headsUp.init( 'selector', {
-//   delay : '75%',
-//   sensitivity: 30
-// });
+// Instantiation
+headsUp.init( 'selector', {
+  delay       : '75%', // percentage of document height
+  delay       : 300,   // number of pixels from top of document
+  sensitivity : 30
+});
