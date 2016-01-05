@@ -1,9 +1,10 @@
 /**
- * HeadsUp 1.5.8
+ * HeadsUp 1.5.9
  * A smart header for smart people
  * @author Kyle Foster (@hkfoster)
  * @license MIT
  */
+
 ;( function( root, factory ) {
   if ( typeof define === 'function' && define.amd ) {
     define( factory );
@@ -36,16 +37,33 @@
         calcDelay  = ( options.delay.toString().indexOf( '%' ) != -1 ) ? parseFloat( options.delay ) / 100.0 * docHeight - winHeight : options.delay,
         oldScrollY = 0;
 
+    // Attach listeners
+    if ( selector ) {
+
+      // Scroll throttle function init
+      throttle( 'scroll', 'optimizedScroll' );
+
+      // Resize throttle function init
+      throttle( 'resize', 'optimizedResize' );
+
+      // Resize function listener
+      window.addEventListener( 'optimizedResize', resizeHandler, false );
+
+      // Scroll function listener
+      window.addEventListener( 'optimizedScroll', scrollHandler, false );
+
+    }
+
     // Resize handler function
-    var resizeHandler = throttle( function() {
+    function resizeHandler() {
 
       // Update window height variable
       winHeight = window.innerHeight;
 
-    }, 250 );
+    }
 
     // Scroll handler function
-    var scrollHandler = throttle( function() {
+    function scrollHandler() {
 
       // Scoped variables
       var newScrollY = window.pageYOffset,
@@ -64,18 +82,8 @@
       // Keep on keeping on
       oldScrollY = newScrollY;
 
-    }, 100 );
-
-    // Attach listeners
-    if ( selector ) {
-
-      // Resize function listener
-      window.addEventListener( 'resize', resizeHandler, false );
-
-      // Scroll function listener
-      window.addEventListener( 'scroll', scrollHandler, false );
-
     }
+
   };
 
   // Extend function
@@ -88,25 +96,19 @@
     return a;
   }
 
-  // Throttle function (http://bit.ly/1eJxOqL)
-  function throttle( fn, threshhold, scope ) {
-    var threshold = threshhold || 250,
-        previous, deferTimer;
-    return function () {
-      var context = scope || this,
-          current = Date.now(),
-          args    = arguments;
-      if ( previous && current < previous + threshhold ) {
-        clearTimeout( deferTimer );
-        deferTimer = setTimeout( function () {
-        previous   = current;
-        fn.apply( context, args );
-        }, threshhold );
-      } else {
-        previous = current;
-        fn.apply( context, args );
-      }
+  // Event throttle function - http://mzl.la/1OasQYz
+  function throttle( type, name, obj ) {
+    obj = obj || window;
+    var running = false;
+    var func = function() {
+      if ( running ) { return; }
+      running = true;
+      requestAnimationFrame( function() {
+        obj.dispatchEvent( new CustomEvent( name ) );
+        running = false;
+      });
     };
+    obj.addEventListener( type, func );
   }
 
   // Public API
